@@ -147,12 +147,12 @@ class App(tk.Tk):
         ttk.Label(ia, text=f"Sugerido para tu PC: {rec}", style="CardMuted.TLabel").pack(
             anchor="w", pady=(2, 4))
         self.var_refine = tk.BooleanVar(value=self.cfg.refine_with_ollama)
-        ttk.Checkbutton(ia, text="Pulir transcripcion con IA (Ollama)",
+        ttk.Checkbutton(ia, text="Pulir transcripcion con IA (Ollama o nube)",
                         variable=self.var_refine, command=self._on_setting).pack(anchor="w")
         self.lbl_ia = ttk.Label(ia, text="", style="CardMuted.TLabel", wraplength=220,
                                 justify="left")
         self.lbl_ia.pack(anchor="w", pady=(6, 2))
-        ttk.Button(ia, text="Configurar IA (Ollama)…", command=self._ollama_dialog).pack(
+        ttk.Button(ia, text="Configurar IA…", command=self._ollama_dialog).pack(
             anchor="w", pady=(2, 0))
         self._refresh_ia_label()
 
@@ -607,75 +607,14 @@ class App(tk.Tk):
 
     # ----------------------------------------------------------- Ollama
     def _refresh_ia_label(self) -> None:
-        if llm.available():
-            mdl = self.cfg.ollama_model or llm.default_model() or "?"
-            self.lbl_ia.config(text=f"✓ IA avanzada activa (Ollama: {mdl}). Actas mejor redactadas.")
-        else:
-            self.lbl_ia.config(text="Sin Ollama: el acta se genera con heuristicas locales "
-                               "(funciona, pero menos pulida).")
+        from octonove_core.ai_dialog import status_text
+        self.lbl_ia.config(text=status_text())
 
     def _ollama_dialog(self) -> None:
-        win = tk.Toplevel(self)
-        theme.center_window(win)
-        win.title("Configurar IA local (Ollama)")
-        win.configure(bg=theme.BG)
-        win.transient(self)
-        win.resizable(False, False)
-        frm = ttk.Frame(win, padding=18)
-        frm.pack(fill="both", expand=True)
-        ttk.Label(frm, text="IA local opcional con Ollama", style="H.TLabel").pack(anchor="w")
-        ttk.Label(frm, text="Ollama es gratis y hace que ActaLocal redacte actas mucho mejores,\n"
-                  "sin que nada salga de tu PC. Es totalmente opcional.",
-                  style="Muted.TLabel", justify="left").pack(anchor="w", pady=(2, 10))
-
-        ram = llm.system_ram_gb()
-        gpu = llm.has_gpu()
-        rec_model, size, motivo = llm.recommend_model(ram, gpu)
-        info = ttk.LabelFrame(frm, text="Tu equipo", padding=10)
-        info.pack(fill="x")
-        ttk.Label(info, text=f"RAM: {ram:.0f} GB  ·  GPU NVIDIA: {'si' if gpu else 'no detectada'}",
-                  style="CardMuted.TLabel").pack(anchor="w")
-        ttk.Label(info, text=f"Modelo recomendado: {rec_model} ({size})\n{motivo}",
-                  style="CardMuted.TLabel", justify="left").pack(anchor="w", pady=(4, 0))
-
-        if llm.available():
-            mods = llm.list_models()
-            ttk.Label(frm, text="Modelo a usar:", style="H.TLabel").pack(anchor="w", pady=(12, 2))
-            var = tk.StringVar(value=self.cfg.ollama_model or (llm.default_model() or ""))
-            cmb = ttk.Combobox(frm, textvariable=var, values=mods, state="readonly", width=34)
-            cmb.pack(anchor="w")
-
-            def save_model():
-                self.cfg.ollama_model = var.get()
-                save_config(self.cfg)
-                llm.set_model(var.get() or None)
-                self._refresh_ia_label()
-                win.destroy()
-            ttk.Button(frm, text="Guardar", style="Primary.TButton", command=save_model).pack(
-                anchor="e", pady=(12, 0))
-        else:
-            guide = ttk.LabelFrame(frm, text="Como activarla (5 min, una vez)", padding=10)
-            guide.pack(fill="x", pady=(12, 0))
-            steps = (f"1. Descarga Ollama gratis: https://ollama.com\n"
-                     f"2. Abre una terminal (tecla Windows, escribe 'cmd', Enter).\n"
-                     f"3. Pega este comando y pulsa Enter (descarga el modelo recomendado):\n")
-            ttk.Label(guide, text=steps, style="CardMuted.TLabel", justify="left").pack(anchor="w")
-            cmd = f"ollama run {rec_model}"
-            ent = ttk.Entry(guide, width=34)
-            ent.insert(0, cmd)
-            ent.configure(state="readonly")
-            ent.pack(side="left", pady=(2, 0))
-
-            def copy_cmd():
-                self.clipboard_clear()
-                self.clipboard_append(cmd)
-                self._set_status("Comando copiado al portapapeles.")
-            ttk.Button(guide, text="Copiar", command=copy_cmd).pack(side="left", padx=6, pady=(2, 0))
-            ttk.Label(frm, text="Cuando termine, vuelve a abrir esta ventana: ActaLocal lo detecta solo.",
-                      style="Muted.TLabel").pack(anchor="w", pady=(10, 0))
-            ttk.Button(frm, text="Abrir ollama.com", command=lambda: webbrowser.open("https://ollama.com")).pack(
-                anchor="w", pady=(8, 0))
-        win.grab_set()
+        # Dialogo de IA UNIFICADO de la suite: Ollama local (gratis) o una API
+        # potente (OpenAI/Gemini/Anthropic). Se configura una vez para las 5 apps.
+        from octonove_core.ai_dialog import show_ai_dialog
+        show_ai_dialog(self, on_saved=self._refresh_ia_label)
 
     # ----------------------------------------------------------- varios
     def _first_run_check(self) -> None:
