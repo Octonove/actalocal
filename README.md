@@ -2,6 +2,16 @@
 
 Aplicación de escritorio para **Windows** que convierte tus reuniones en **actas completas** — transcripción, resumen, puntos clave, decisiones y tareas — **100% en tu PC**: ni el audio ni el texto salen de tu ordenador.
 
+## ⬇️ Descargar (Windows 10/11)
+
+### ➡️ [**Descargar ActaLocal (instalador .exe)**](https://github.com/Octonove/actalocal/releases/latest/download/ActaLocal-Setup.exe)
+
+Descarga **directa** del instalador, sin registro. También puedes ver la [última versión y notas](https://github.com/Octonove/actalocal/releases/latest).
+
+> Si Windows muestra *"Windows protegió tu PC"* (es normal en programas nuevos sin firma): pulsa **Más información → Ejecutar de todas formas**. Se instala sin permisos de administrador.
+
+---
+
 ## Funciones
 
 - **Grabación de reuniones**: audio del sistema (los demás participantes) + micrófono (tu voz), con pausa/reanudar y medidores de nivel.
