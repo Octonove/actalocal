@@ -42,7 +42,10 @@ class App(tk.Tk):
         self.cfg: AppConfig = load_config()
         self.ffmpeg = fu.find_ffmpeg()
         self._whisper_ok: bool | None = None   # cache de fu.has_whisper (calculo perezoso)
-        self.mics = ac.list_microphones()
+        # Enumerar micros en un hilo efimero: soundcard inicializa COM al
+        # importarse y, si ocurriera en el hilo de la UI, congelaria los
+        # dialogos nativos de Tk. El hilo muere y la UI nunca toca COM.
+        self.mics = self._list_mics_bg()
 
         self.cap: ac.AudioCapture | None = None
         self._state = "idle"        # idle | recording | processing | done
@@ -62,6 +65,15 @@ class App(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(300, self._first_run_check)
 
+    @staticmethod
+    def _list_mics_bg() -> list[str]:
+        holder: dict = {}
+        t = threading.Thread(target=lambda: holder.setdefault("m", ac.list_microphones()),
+                             daemon=True)
+        t.start()
+        t.join(timeout=10)
+        return holder.get("m", [])
+
     # ------------------------------------------------------------------ UI
     def _build_ui(self) -> None:
         theme.header(self, APP_NAME, "Reuniones a acta · transcripcion y resumen 100% en tu PC")
@@ -73,9 +85,10 @@ class App(tk.Tk):
         body.columnconfigure(1, weight=1)
         body.rowconfigure(0, weight=1)
 
-        # --- Columna izquierda: controles ---
-        left = ttk.Frame(body)
-        left.grid(row=0, column=0, sticky="ns", padx=(0, 14))
+        # --- Columna izquierda: controles (con scroll: en ventanas bajas o con
+        # texto grande el panel no cabia entero y quedaba cortado por abajo) ---
+        left_wrap, left = theme.scrollable(body)
+        left_wrap.grid(row=0, column=0, sticky="ns", padx=(0, 14))
         self._build_controls(left)
 
         # --- Columna derecha: resultados ---
@@ -286,7 +299,9 @@ class App(tk.Tk):
             messagebox.showwarning(APP_NAME, "Activa al menos una fuente de audio (sistema o microfono).")
             return
         mic_name = self.var_micdev.get() if (self.var_mic.get() and self.mics) else None
-        self.cap = ac.AudioCapture(self.var_sys.get(), mic_name, str(work_dir()))
+        # ffmpeg: respaldo DirectShow para micros que WASAPI no puede abrir
+        self.cap = ac.AudioCapture(self.var_sys.get(), mic_name, str(work_dir()),
+                                   ffmpeg=str(self.ffmpeg or ""))
         self.cap.start()
         self._state = "recording"
         self._rec_t0 = time.time()

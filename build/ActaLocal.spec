@@ -24,7 +24,7 @@ a = Analysis(
     binaries=binaries,
     datas=[],
     hiddenimports=['soundcard', 'soundcard.mediafoundation', '_cffi_backend',
-                   'numpy', 'PIL'],
+                   'numpy', 'PIL', 'octonove_core.dshow'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
